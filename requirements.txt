@@ -1,0 +1,40 @@
+# InstaAgent — Python 3.11+ dependencies
+
+# Trend scraping
+pytrends==4.9.2
+# pytrends uses urllib3 Retry(method_whitelist=...) which was removed in urllib3 2.0
+# Pin to <2.0 for compatibility
+urllib3<2.0
+
+# Instagram read-only scraping (competitor analysis only — optional)
+# Install separately if needed: pip install instagrapi
+# Requires Visual C++ Build Tools on Windows for pydantic-core compilation.
+# Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+# instagrapi==2.1.2
+
+# Image processing & deduplication
+Pillow>=10.4.0
+imagehash==4.3.1
+
+# Unsplash + Meta Graph API HTTP clients
+requests==2.31.0
+httpx==0.27.0
+
+# ngrok tunnel (replaces static public IP requirement)
+pyngrok>=7.0.0
+
+# Local LLM (Ollama REST client — Ollama itself installed separately)
+# No pip package needed; we use requests to call http://localhost:11434
+
+# Scheduler
+APScheduler==3.10.4
+
+# Config & environment
+python-dotenv==1.0.1
+PyYAML==6.0.1
+
+# Logging color (optional, used in logger.py)
+colorlog==6.8.2
+
+# Cloudinary for cloud image hosting (replaces ngrok)
+cloudinary==1.39.0

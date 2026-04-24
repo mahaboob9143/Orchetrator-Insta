@@ -1,0 +1,52 @@
+name: Repost Pipeline
+
+on:
+  schedule:
+    # 1:30 AM UTC = 7:00 AM IST
+    # 1:30 PM UTC = 7:00 PM IST
+    - cron: '30 1,13 * * *'
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+
+jobs:
+  run-repost:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run InstaAgent
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
+          IG_SESSION_ID: ${{ secrets.IG_SESSION_ID }}
+          IG_SCRAPE_USER: ${{ secrets.IG_SCRAPE_USER }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: |
+          # Add a random delay between 0 and 30 minutes (0 to 1800 seconds)
+          # This makes the posting time look human (between 7:00 and 7:30 IST)
+          delay=$((RANDOM % 1800))
+          echo "Sleeping for $delay seconds before posting to randomize time..."
+          sleep $delay
+          
+          # Run the repost pipeline
+          python main.py --repost
+
+      - name: Commit Dedup Tracker (if changed)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/reposted_ids.txt
+          # Only commit if there are changes
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update repost tracker" && git push)

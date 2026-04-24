@@ -1,0 +1,128 @@
+# ============================================================
+# InstaAgent — Runtime Configuration
+# All feature flags and tunable parameters live here.
+# Changes take effect on the next orchestration cycle (hot-reload).
+# ============================================================
+
+flags:
+  human_approval: false        # if true — pause before posting, wait for [y/n]
+  trend_scraping: false        # competitor scraping (disabled by default — low risk)
+  engagement_analysis: false   # pull likes/reach/saves after posting (enable when scheduler needs data)
+  auto_caption: true           # use Ollama; if false — use template captions only
+  posting_enabled: true        # master kill switch — set false to pause all posting
+
+# ── Scheduling ───────────────────────────────────────────────
+schedule:
+  max_posts_per_day: 2         # hard cap — never exceed Instagram safe limits
+  posting_windows:
+    morning:   ["07:00", "09:00"]
+    afternoon: ["13:00", "15:00"]
+    evening:   ["20:00", "22:00"]
+  random_offset_minutes: 30    # ± random offset within each window (human-like)
+
+# ── Media Queue ──────────────────────────────────────────────
+media:
+  min_resolution: 1080         # minimum dimension (width or height) in pixels
+  queue_dir: media/queue       # local folder for approved images
+  max_queue_size: 20           # stop downloading when queue has this many images
+
+# ── Caption Generation ────────────────────────────────────────
+caption:
+  model: mistral               # Ollama model name
+  language: en_ar              # bilingual: English + Arabic
+  max_hashtags: 25
+
+  # Fallback templates used when auto_caption: false or Ollama fails
+  fallback_templates:
+    - |
+      سبحان الله — Glory be to Allah ☁️
+
+      Every sunrise is a reminder of His mercy.
+      Take a moment to reflect and be grateful.
+
+      Save this as a reminder 📌
+
+      {hashtags}
+    - |
+      الحمد لله — All praise belongs to Allah 🤍
+
+      In every challenge, there is a hidden blessing.
+      Trust in Allah's plan — He knows what we do not.
+
+      Share with someone who needs this today 🤍
+
+      {hashtags}
+    - |
+      اللَّهُ أَكْبَر — Allah is the Greatest ✨
+
+      No matter what life brings, return to Him.
+      He is the Most Merciful, the Most Compassionate.
+
+      Tag a brother or sister ☁️
+
+      {hashtags}
+
+# ── Ollama LLM ───────────────────────────────────────────────
+ollama:
+  base_url: "http://localhost:11434"
+  model: "mistral"
+  auto_pull: true              # auto-pull model if not found in Ollama
+  temperature: 0.7
+  max_tokens: 300
+
+# ── Competitor Scraping ───────────────────────────────────────
+# Only active when flags.trend_scraping: true
+# Maximum 2 accounts — hard limit enforced in code.
+# Use a secondary/burner account for IG_SCRAPE_USER.
+competitors:
+  - islamic.cinematic.world
+  - islamicmotivation
+
+# ── Engagement Tracking ───────────────────────────────────────
+engagement:
+  check_intervals_hours: [1, 6, 24]
+  high_performance_threshold:
+    likes: 500
+    reach: 5000
+
+# ── Local Image Server ────────────────────────────────────────
+# Meta Graph API requires a publicly reachable image URL.
+# Set public_base_url to your machine's public IP or domain.
+# If using a router, forward port 8765 → this machine's local IP.
+# Example: "http://203.0.113.42"  or  "http://yourdomain.com"
+image_server:
+  port: 8765
+  use_cloudinary: true # Recommended: Uploads to Cloudinary (free, stable public URL)
+  use_imgbb: false # If true, uploads to ImgBB and uses that URL (needs IMGBB_API_KEY)
+  use_ngrok: false  # If true, uses ngrok tunnel automatically
+  public_base_url: "http://[2404:ba00:fd01:d747:7aae:62fe:c4cc:3f6e]"
+
+# ── Pytrends Keywords ─────────────────────────────────────────
+pytrends:
+  keywords:
+    - "Islamic quotes"
+    - "Quran"
+    - "Islamic reminder"
+    - "Prophet Muhammad"
+    - "Ramadan"
+    - "Jummah Friday"
+    - "Mosque"
+    - "Allah"
+    - "Hadith"
+    - "Islamic motivation"
+    - "Subhanallah"
+    - "Alhamdulillah"
+    - "Islam peace"
+  timeframe: "now 7-d"
+  geo: ""                      # empty = worldwide; e.g. "PK" for Pakistan
+
+# ── Repost Agent ──────────────────────────────────────────────
+# Scrapes images from a public Islamic account and reposts them
+# with a rewritten caption. Triggered via: python main.py --repost
+repost:
+  enabled: true                    # Master flag — set true to enable --repost
+  source_accounts:
+    - softeningsayings               # Public IG accounts to scrape images from
+  max_posts_to_check: 20            # How many recent posts to scan per run
+  download_dir: media/reposts       # Separate download directory (from Unsplash queue)
+  add_credit_line: true             # Append "Via @softeningsayings 🤍" to caption
