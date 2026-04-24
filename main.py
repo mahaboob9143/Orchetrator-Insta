@@ -43,7 +43,6 @@ def _load_env_or_exit() -> None:
     required = {
         "META_ACCESS_TOKEN": "Long-lived Meta access token",
         "IG_ACCOUNT_ID":     "Instagram Business/Creator account ID",
-        "UNSPLASH_ACCESS_KEY": "Unsplash API access key",
     }
 
     missing = {k: v for k, v in required.items() if not os.getenv(k)}

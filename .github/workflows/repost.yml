@@ -34,10 +34,9 @@ jobs:
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: |
-          # Add a random delay between 0 and 30 minutes (0 to 1800 seconds)
-          # This makes the posting time look human (between 7:00 and 7:30 IST)
-          delay=$((RANDOM % 1800))
-          echo "Sleeping for $delay seconds before posting to randomize time..."
+          # Add a random delay below 10 seconds
+          delay=$((RANDOM % 10))
+          echo "Sleeping for $delay seconds before posting..."
           sleep $delay
           
           # Run the repost pipeline
