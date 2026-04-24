@@ -2,9 +2,9 @@ name: Repost Pipeline
 
 on:
   schedule:
-    # 1:30 AM UTC = 7:00 AM IST
-    # 1:30 PM UTC = 7:00 PM IST
-    - cron: '30 1,13 * * *'
+    # 1:14 AM UTC = 6:44 AM IST
+    # 1:14 PM UTC = 6:44 PM IST
+    - cron: '14 1,13 * * *'
   workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:

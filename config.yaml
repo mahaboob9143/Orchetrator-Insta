@@ -15,6 +15,9 @@ repost:
     - softeningsayings            # Public IG accounts to scrape images from
   max_posts_to_check: 20          # How many recent posts to scan per run
   download_dir: media/reposts     # Local download directory (cleaned up automatically)
+  is_ramadan: false               # Set true during Ramadan to allow Ramadan content
+  post_to_story: true             # Also post the media to your Instagram Story
+  collaborators: []              # (Optional) List of usernames to invite as collaborators
   add_credit_line: true           # Append "Via @softeningsayings 🤍" to caption
 
 # ── Caption Generation ────────────────────────────────────────

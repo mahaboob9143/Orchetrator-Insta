@@ -221,6 +221,10 @@ class RepostAgent:
                 logger.debug(f"Already reposted {post_id} — skipping")
                 continue
 
+            # Suitability Filter (Jummah/Friday/Ramadan checks)
+            if not self._is_post_suitable(post):
+                continue
+
             result = self._download_and_prepare(
                 post=post,
                 username=username,
@@ -232,6 +236,43 @@ class RepostAgent:
 
         logger.info(f"All checked posts from @{username} have already been reposted.")
         return None
+
+    def _is_post_suitable(self, post) -> bool:
+        """
+        Check if the post is suitable for today based on keywords in the caption.
+        Example: Skip 'Jummah' posts if today is not Friday.
+        """
+        from datetime import datetime
+        caption = (post.caption or "").lower()
+        now = datetime.now()
+        
+        # 1. Friday / Jummah Filter
+        friday_keywords = ["friday", "jummah", "jumuah", "جمعة"]
+        is_friday_content = any(kw in caption for kw in friday_keywords)
+        is_today_friday = now.weekday() == 4  # 4 = Friday
+        
+        if is_friday_content and not is_today_friday:
+            logger.info(f"Skipping post {post.shortcode}: contains Friday/Jummah keywords but today is not Friday.")
+            return False
+        
+        if is_today_friday and not is_friday_content:
+            # Optional: You might want to prioritize Friday content on Friday, 
+            # but currently we just allow everything else too.
+            pass
+
+        # 2. Ramadan Filter
+        ramadan_keywords = ["ramadan", "ramazan", "iftar", "suhoor", "fasting", "رمضان"]
+        is_ramadan_content = any(kw in caption for kw in ramadan_keywords)
+        
+        # Check config for manual Ramadan toggle
+        repost_cfg = self.config.get("repost", {})
+        is_it_ramadan = repost_cfg.get("is_ramadan", False)
+        
+        if is_ramadan_content and not is_it_ramadan:
+            logger.info(f"Skipping post {post.shortcode}: contains Ramadan keywords but 'is_ramadan' is false in config.")
+            return False
+
+        return True
 
     # ── Download + prepare ───────────────────────────────────────────────────
 

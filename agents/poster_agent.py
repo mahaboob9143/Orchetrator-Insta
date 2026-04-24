@@ -15,11 +15,14 @@ import time
 import random
 from typing import Optional
 
+import json
 import requests
 
+from core.flags import get_config
 from core.logger import get_logger
 from core.retry import retry
 from core.cloudinary_uploader import upload_image, delete_image
+from core.story_designer import create_story_image
 
 logger = get_logger("PosterAgent")
 
@@ -68,19 +71,23 @@ class PosterAgent:
                 logger.error("Cloudinary upload failed. Cannot post.")
                 return None
                 
+            # 1. Post to Feed
             ig_post_id = self._publish(image_url=image_url, caption=caption)
+            
+            # 2. Post to Story (if enabled)
+            config = get_config()
+            if ig_post_id and config.get("repost", {}).get("post_to_story", False):
+                logger.info("Story mode enabled — sharing to Instagram Story...")
+                self._publish_story(local_path=local_path)
         except Exception as exc:
             logger.error(f"Post failed: {exc}", exc_info=True)
             return None
+        finally:
+            # ── Cleanup Cloudinary ───────────────────────────────────────────
+            if cloud_public_id:
+                delete_image(cloud_public_id)
 
-        # ── Cleanup ────────────────────────────────────────────────────────────
-        if cloud_public_id:
-            delete_image(cloud_public_id)
-
-        # ── Local File Cleanup ─────────────────────────────────────────────────
-        if ig_post_id:
-            logger.info(f"✅ Repost published! IG post ID: {ig_post_id}")
-            # Auto-clean local image file — no reason to keep it after publish
+            # ── Local File Cleanup (Always happens) ──────────────────────────
             cleanup_path = image.get("_cleanup_path") or image.get("local_path")
             if cleanup_path and os.path.exists(cleanup_path):
                 try:
@@ -89,6 +96,9 @@ class PosterAgent:
                 except Exception as e:
                     logger.warning(f"Could not delete local repost file: {e}")
 
+        if ig_post_id:
+            logger.info(f"✅ Repost published! IG post ID: {ig_post_id}")
+            
         return ig_post_id
 
     # ── Meta Graph API flow ───────────────────────────────────────────────────
@@ -125,11 +135,21 @@ class PosterAgent:
     def _create_container(self, image_url: str, caption: str) -> Optional[str]:
         """POST /{account_id}/media — create an IG media container."""
         url = f"{_GRAPH_API_BASE}/{self.ig_account_id}/media"
+        
+        # Get collaborators from config
+        config = get_config()
+        collabs = config.get("repost", {}).get("collaborators", [])
+        
         data = {
             "image_url": image_url,
             "caption": caption,
             "access_token": self.access_token,
         }
+        
+        if collabs:
+            # Meta expects a JSON-encoded list of strings
+            data["collaborators"] = json.dumps(collabs)
+            logger.info(f"Inviting collaborators: {', '.join(collabs)}")
 
         resp = requests.post(url, data=data, timeout=30)
 
@@ -206,3 +226,77 @@ class PosterAgent:
 
         post_id = resp.json().get("id")
         return post_id
+
+    # ── Story Publishing ──────────────────────────────────────────────────────
+
+    def _publish_story(self, local_path: str) -> bool:
+        """Full flow for Story publishing with Auto-Designer."""
+        story_local = "media/temp_story.jpg"
+        story_cloud_id = None
+        
+        try:
+            # 1. Design the Story Image (Option A: Blur + Text)
+            logger.info("Designing vertical Story image...")
+            success = create_story_image(local_path, story_local, text="NEW POST")
+            if not success:
+                return False
+
+            # 2. Upload Story image to Cloudinary
+            logger.info("Uploading designed Story to Cloudinary...")
+            story_url, story_cloud_id = upload_image(story_local)
+            if not story_url:
+                return False
+
+            # 3. Create Story container
+            logger.info("Meta API: creating Story media container...")
+            container_id = self._create_story_container(story_url)
+            if not container_id:
+                return False
+
+            # 4. Wait
+            time.sleep(random.uniform(3.0, 6.0))
+            ready = self._await_container(container_id, max_wait_secs=90)
+            if not ready:
+                return False
+
+            # 5. Publish
+            logger.info("Meta API: publishing Story container...")
+            story_id = self._publish_container(container_id)
+            
+            if story_id:
+                logger.info(f"✅ Shared to Story! Story ID: {story_id}")
+                return True
+        except Exception as e:
+            logger.error(f"Story publish failed: {e}")
+        finally:
+            # Cleanup story-specific temp files
+            if story_cloud_id:
+                delete_image(story_cloud_id)
+            if os.path.exists(story_local):
+                os.remove(story_local)
+        
+        return False
+
+    @retry(
+        max_attempts=3,
+        backoff_factor=2,
+        initial_wait=5.0,
+        exceptions=(requests.RequestException,),
+    )
+    def _create_story_container(self, image_url: str) -> Optional[str]:
+        """POST /{account_id}/media — create a Story container."""
+        url = f"{_GRAPH_API_BASE}/{self.ig_account_id}/media"
+        data = {
+            "image_url": image_url,
+            "media_type": "STORIES",
+            "access_token": self.access_token,
+        }
+
+        resp = requests.post(url, data=data, timeout=30)
+        
+        if not resp.ok:
+            logger.error(f"Story container failed: {resp.text}")
+            return None
+
+        resp.raise_for_status()
+        return resp.json().get("id")
