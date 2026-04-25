@@ -2,9 +2,9 @@ name: Repost Pipeline
 
 on:
   schedule:
-    # 1:14 AM UTC = 6:44 AM IST
-    # 1:14 PM UTC = 6:44 PM IST
-    - cron: '14 1,13 * * *'
+    # 0:30 AM UTC = 6:00 AM IST
+    # 12:30 PM UTC = 6:00 PM IST
+    - cron: '30 0,12 * * *'
   workflow_dispatch:  # Allows manual triggering from GitHub UI
 
 jobs:
@@ -33,6 +33,8 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
         run: |
           # Add a random delay below 10 seconds
           delay=$((RANDOM % 10))
@@ -46,6 +48,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/reposted_ids.txt
+          git add data/reposted_ids.txt data/last_post_type.txt
           # Only commit if there are changes
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update repost tracker" && git push)

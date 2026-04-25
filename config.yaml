@@ -6,6 +6,11 @@
 image_server:
   use_cloudinary: true # Uploads to Cloudinary (free, stable public URL)
 
+# ── Facebook Page ──────────────────────────────────────────────
+facebook:
+  enabled: false                 # Set false to stop posting to Facebook
+  page_name: "Self Explore"     # For reference only — not used in code
+
 # ── Repost Agent ──────────────────────────────────────────────
 # Scrapes images from public Islamic accounts and reposts them
 # with a rewritten caption. Triggered by GitHub Actions via: main.py --repost
@@ -14,6 +19,7 @@ repost:
   source_accounts:
     - softeningsayings            # Public IG accounts to scrape images from
   max_posts_to_check: 20          # How many recent posts to scan per run
+  include_reels: true            # Set true to also scrape & repost Reels (videos)
   download_dir: media/reposts     # Local download directory (cleaned up automatically)
   is_ramadan: false               # Set true during Ramadan to allow Ramadan content
   post_to_story: true             # Also post the media to your Instagram Story
